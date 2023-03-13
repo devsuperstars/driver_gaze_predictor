@@ -1,5 +1,7 @@
 """
 Запуск прототипа для классификации направления взгляда водителя на видео
+
+@author Sergey Vakhrameev
 """
 from src.analysis import ImageGazePredictor
 import cv2
