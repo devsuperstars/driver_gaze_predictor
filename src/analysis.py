@@ -59,7 +59,7 @@ class ImageGazePredictor:
         frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         bounding_boxes, _ = self.face_detector.detect(frame_bgr)
 
-        if len(bounding_boxes) == 0:
+        if bounding_boxes is None:
             return frame
 
         x, y, x1, y1 = [int(i) for i in bounding_boxes[0]]
