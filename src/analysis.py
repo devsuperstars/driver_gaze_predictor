@@ -7,7 +7,7 @@ import sys
 import torch
 # import torch.nn as nn
 import torchvision
-import mtcnn
+from facenet_pytorch import MTCNN
 
 sys.path.append('src')
 
@@ -17,10 +17,9 @@ class ImageGazePredictor:
     Определитель направления взгляда на изображении
     """
     def __init__(self, sliding_window_size: int = 0):
-        self.device = 'cpu' # torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.font = cv2.FONT_HERSHEY_SIMPLEX
         # загрузка детектора лица
-        self.face_detector = mtcnn.MTCNN() # FacialImageProcessing(False)
+        self.face_detector = MTCNN(select_largest=True, post_process=False) # FacialImageProcessing(False)
         # загрузка классификатора
         self.gaze_tracker = self.load_gaze_tracker('src/models/enet_b0_sota.pt')
         # размер скользящего окна для сглаживания предсказаний
@@ -47,9 +46,6 @@ class ImageGazePredictor:
             Выход: сама модель
         """
         model = torch.load(model_path, map_location = torch.device('cpu'))
-        if self.device == 'cuda:0':
-            model.to(self.device)
-
         model.eval()
 
         return model
@@ -61,31 +57,26 @@ class ImageGazePredictor:
             Вызод: кадр с предскзанным классом, либо иным текстом
         """
         frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-        bounding_boxes = self.face_detector.detect_faces(frame_bgr)
+        bounding_boxes, _ = self.face_detector.detect(frame_bgr)
 
         if len(bounding_boxes) == 0:
             return frame
 
-        x, y, width, height = bounding_boxes[0]['box']
+        x, y, x1, y1 = [int(i) for i in bounding_boxes[0]]
 
-        face = frame[y:y+height,x:x+width,:]
+        face = frame[y:y1,x:x1,:]
 
-        cv2.rectangle(frame, (x, y), (x + width, y + height), (0, 0, 0), 1)
+        cv2.rectangle(frame, (x, y), (x1, y1), (0, 0, 0), 1)
 
         transform = torchvision.transforms.Compose(
             [
                 torchvision.transforms.ToTensor(),
-                torchvision.transforms.Resize((260, 260)),
-                # раскомментировать при работе с веб-камеры:
-                # torchvision.transforms.RandomHorizontalFlip(p=1),
+                torchvision.transforms.Resize((260, 260))
             ]
         )
 
         face_transformed = transform(face)
         face_transformed = torch.unsqueeze(face_transformed, 0)
-
-        if self.device == 'cuda:0':
-            face_transformed.to(self.device)
 
         predicted_gaze_direction = self.gaze_tracker(face_transformed)
         # probs = nn.functional.softmax(predicted_gaze_direction, dim=1)
