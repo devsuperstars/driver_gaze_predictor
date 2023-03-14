@@ -12,7 +12,6 @@ ana = ImageGazePredictor(sliding_window_size=2)
 
 while True:
     _, frame = cap.read()
-    frame = cv2.flip(frame, 1)
     processed_frame = ana.track_gaze(frame)
 
     cv2.imshow("Frame", processed_frame)
